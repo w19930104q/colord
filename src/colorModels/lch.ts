@@ -12,7 +12,9 @@ export const clampLcha = (laba: LchaColor): LchaColor => ({
   // Negative chroma is clamped to 0; it is theoretically unbounded above
   c: laba.c < 0 ? 0 : laba.c,
   h: clampHue(laba.h),
-  a: laba.a,
+  // Alpha is clamped here, at parse time, the same as in the other CSS Color 4
+  // models — not left for the downstream RGB clip to catch
+  a: clamp(laba.a),
 });
 
 export const roundLcha = (laba: LchaColor): LchaColor => ({

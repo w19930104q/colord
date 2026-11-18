@@ -1,5 +1,6 @@
 import { RgbaColor, LabaColor, InputObject } from "../types";
 import { clamp, isPresent, round, roundAlpha } from "../helpers";
+import { clampRgba } from "./rgb";
 import { D50, rgbaToXyza, xyzaToRgba } from "./xyz";
 
 // Conversion factors from https://en.wikipedia.org/wiki/CIELAB_color_space
@@ -67,7 +68,11 @@ export const rgbaToLaba = (rgba: RgbaColor): LabaColor => {
 };
 
 /**
- * Performs LAB → CIEXYZ → RGB color conversion
+ * Performs LAB → CIEXYZ → RGB color conversion.
+ * The conversion chain itself is pure; the sRGB gamut policy (`clampRgba`)
+ * is applied explicitly here, at the color space boundary, so out-of-gamut
+ * LAB colors clip identically no matter which path (object parser, CSS string,
+ * LCH, `mix`) brought them in.
  * https://www.w3.org/TR/css-color-4/#color-conversion-code
  */
 export const labaToRgba = (laba: LabaColor): RgbaColor => {
@@ -75,10 +80,12 @@ export const labaToRgba = (laba: LabaColor): RgbaColor => {
   const x = laba.a / 500 + y;
   const z = y - laba.b / 200;
 
-  return xyzaToRgba({
-    x: (Math.pow(x, 3) > e ? Math.pow(x, 3) : (116 * x - 16) / k) * D50.x,
-    y: (laba.l > k * e ? Math.pow((laba.l + 16) / 116, 3) : laba.l / k) * D50.y,
-    z: (Math.pow(z, 3) > e ? Math.pow(z, 3) : (116 * z - 16) / k) * D50.z,
-    a: laba.alpha,
-  });
+  return clampRgba(
+    xyzaToRgba({
+      x: (Math.pow(x, 3) > e ? Math.pow(x, 3) : (116 * x - 16) / k) * D50.x,
+      y: (laba.l > k * e ? Math.pow((laba.l + 16) / 116, 3) : laba.l / k) * D50.y,
+      z: (Math.pow(z, 3) > e ? Math.pow(z, 3) : (116 * z - 16) / k) * D50.z,
+      a: laba.alpha,
+    })
+  );
 };

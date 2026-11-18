@@ -37,7 +37,9 @@ export const parseXyza = ({ x, y, z, a = 1 }: InputObject): RgbaColor | null => 
     a: Number(a),
   });
 
-  return xyzaToRgba(xyza);
+  // The sRGB gamut policy is applied here, at the color space boundary,
+  // so out-of-gamut XYZ colors clip the same way on every code path
+  return clampRgba(xyzaToRgba(xyza));
 };
 
 /**
@@ -60,22 +62,28 @@ export const adaptXyzToD65 = (xyza: XyzColor): XyzColor => ({
 });
 
 /**
- * Converts an CIE XYZ color (D50) to RGBA color space (D65)
+ * Converts an CIE XYZ color (D50) to RGBA color space (D65).
+ * Pure conversion: the result may leave the sRGB gamut. Clipping it back
+ * (`clampRgba`) is a separate gamut policy, applied by the callers that sit
+ * at a color space boundary (`parseXyza`, `labaToRgba`) — never inside the math.
  * https://www.w3.org/TR/css-color-4/#color-conversion-code
  */
 export const xyzaToRgba = (sourceXyza: XyzaColor): RgbaColor => {
   const xyz = adaptXyzToD65(sourceXyza);
 
-  return clampRgba({
+  return {
     r: unlinearizeRgbChannel(0.032404542 * xyz.x - 0.015371385 * xyz.y - 0.004985314 * xyz.z),
     g: unlinearizeRgbChannel(-0.00969266 * xyz.x + 0.018760108 * xyz.y + 0.00041556 * xyz.z),
     b: unlinearizeRgbChannel(0.000556434 * xyz.x - 0.002040259 * xyz.y + 0.010572252 * xyz.z),
     a: sourceXyza.a,
-  });
+  };
 };
 
 /**
- * Converts an RGB color (D65) to CIE XYZ (D50)
+ * Converts an RGB color (D65) to CIE XYZ (D50).
+ * The result is clamped to the canonical D50 range: valid sRGB input can land
+ * a hair outside it (D65 white adapts to y ≈ 100.0002), and the clamp is what
+ * makes pure white come out as exactly D50 — and thus as exactly lab(100 0 0).
  * https://image-engineering.de/library/technotes/958-how-to-convert-between-srgb-and-ciexyz
  */
 export const rgbaToXyza = (rgba: RgbaColor): XyzaColor => {

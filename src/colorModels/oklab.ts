@@ -82,6 +82,9 @@ export const rgbaToOklaba = (rgba: RgbaColor): OklabaColor => {
  * Performs OKLab → linear RGB color conversion (the inverse of the matrices above,
  * from the same CSS Color 4 sample code). Round-trips a color to the exact same
  * byte values, unlike the lower-precision matrices in Ottosson's original post.
+ * `clampRgba` is the sRGB gamut policy, applied explicitly at this color space
+ * boundary (the same role `labaToRgba` plays for CIE LAB) — the matrix math
+ * itself is pure and may produce out-of-gamut channels.
  * https://www.w3.org/TR/css-color-4/#color-conversion-code
  */
 export const oklabaToRgba = (laba: OklabaColor): RgbaColor => {
